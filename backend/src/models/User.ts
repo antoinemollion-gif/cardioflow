@@ -24,14 +24,8 @@ export interface IUser extends Document {
     updatedAt: Date;
 }
 
-const userSchema = new Schema<IUser>({
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true,
-        match: /.+\@.+\..+/,
-    },
+const userSchema = new Schema<IUser>( {
+    email: { type: String, required: true, unique: true, lowercase: true, match: /.+\@.+\..+/ },
     passwordHash: { type: String, required: true },
     firstName: { type: String, default: '' },
     lastName: { type: String, default: '' },
@@ -42,14 +36,14 @@ const userSchema = new Schema<IUser>({
         vibrationEnabled: { type: Boolean, default: true },
         theme: { type: String, enum: ['light', 'dark'], default: 'light' },
         preferredSessionTime: { type: [String], default: ['08:00', '12:00', '20:00'] },
-        respirationRhythm: { type: Number, default: 6, min: 4, max: 8 },
+        respirationRhythm: { type: Number, default: 6, min: 4, max: 8 }
     },
     subscription: {
         plan: { type: String, enum: ['free', 'pro', 'premium', 'family'], default: 'free' },
         startDate: { type: Date, default: Date.now },
-        endDate: Date,
+        endDate: Date
     },
-    linkedDevices: { type: [String], default: [] },
+    linkedDevices: { type: [String], default: [] }
 }, { timestamps: true });
 
 userSchema.index({ email: 1 });
