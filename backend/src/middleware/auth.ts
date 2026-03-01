@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'secret-key';
+
 export interface AuthRequest extends Request {
     userId?: string;
-    user?: any;
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -12,16 +13,15 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
         if (!token) {
             return res.status(401).json({ error: 'No token provided' });
         }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        req.userId = (decoded as any).userId;
-        req.user = decoded;
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+        req.userId = decoded.userId;
         next();
     } catch (error) {
         res.status(401).json({ error: 'Invalid token' });
     }
 };
 
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-    console.error('Error:', err);
-    res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
 };
