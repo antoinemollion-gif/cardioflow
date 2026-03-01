@@ -1,18 +1,19 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-const sessionSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  sessionType: { type: String, enum: ['breathing', 'meditation', 'hrv_training'], required: true },
-  startTime: { type: Date, default: Date.now },
-  endTime: Date,
-  duration: Number, // in seconds
-  coherenceScore: Number,
-  avgHeartRate: Number,
-  minHeartRate: Number,
-  maxHeartRate: Number,
-  respirationRate: Number,
-  notes: String,
-  createdAt: { type: Date, default: Date.now }
+export interface ISession extends Document {
+    userId: string;
+    duration: number;
+    heartRateData: number[];
+    coherenceScore: number;
+    timestamp: Date;
+}
+
+const SessionSchema: Schema = new Schema({
+    userId: { type: String, required: true },
+    duration: { type: Number, required: true },
+    heartRateData: { type: [Number], required: true },
+    coherenceScore: { type: Number, required: true },
+    timestamp: { type: Date, default: Date.now }
 });
 
-export const Session = mongoose.model('Session', sessionSchema);
+export const Session = mongoose.model<ISession>('Session', SessionSchema);
