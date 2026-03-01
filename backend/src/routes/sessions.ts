@@ -1,71 +1,53 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { Session } from '../models/Session';
-import { SessionService } from '../services/SessionService';
+import { calculateCoherence } from '../utils/biofeedback';
 
 const router = express.Router();
-const sessionService = new SessionService();
 
-// Create new session
-router.post('/', async (req, res) => {
-  try {
-    const { userId, sessionType } = req.body;
-    const session = new Session({
-      userId,
-      sessionType,
-      startTime: new Date()
-    });
-    await session.save();
-    res.status(201).json(session);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+router.post('/create', async (req: Request, res: Response) => {
+    try {
+        const { userId, duration, heartRateData } = req.body;
+        const coherenceScore = calculateCoherence(heartRateData);
+        const session = new Session({
+            userId,
+            duration,
+            heartRateData,
+            coherenceScore,
+            timestamp: new Date()
+        });
+        await session.save();
+        res.status(201).json({ message: 'Session created', session });
+    } catch (error) {
+        res.status(400).json({ error: 'Failed to create session' });
+    }
 });
 
-// Get sessions for user
-router.get('/user/:userId', async (req, res) => {
-  try {
-    const sessions = await Session.find({ userId: req.params.userId }).sort({ startTime: -1 });
-    res.json(sessions);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+router.get('/user/:userId', async (req: Request, res: Response) => {
+    try {
+        const sessions = await Session.find({ userId: req.params.userId }).sort({ timestamp: -1 });
+        res.json(sessions);
+    } catch (error) {
+        res.status(400).json({ error: 'Failed to fetch sessions' });
+    }
 });
 
-// Update session with biofeedback data
-router.put('/:sessionId', async (req, res) => {
-  try {
-    const { coherenceScore, avgHeartRate, minHeartRate, maxHeartRate, respirationRate, notes } = req.body;
-    const session = await Session.findByIdAndUpdate(
-      req.params.sessionId,
-      {
-        coherenceScore,
-        avgHeartRate,
-        minHeartRate,
-        maxHeartRate,
-        respirationRate,
-        notes,
-        endTime: new Date()
-      },
-      { new: true }
-    );
-    res.json(session);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+router.get('/:sessionId', async (req: Request, res: Response) => {
+    try {
+        const session = await Session.findById(req.params.sessionId);
+        if (!session) return res.status(404).json({ error: 'Session not found' });
+        res.json(session);
+    } catch (error) {
+        res.status(400).json({ error: 'Failed to fetch session' });
+    }
 });
 
-// End session
-router.post('/:sessionId/end', async (req, res) => {
-  try {
-    const session = await Session.findByIdAndUpdate(
-      req.params.sessionId,
-      { endTime: new Date() },
-      { new: true }
-    );
-    res.json(session);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+router.delete('/:sessionId', async (req: Request, res: Response) => {
+    try {
+        await Session.findByIdAndDelete(req.params.sessionId);
+        res.json({ message: 'Session deleted' });
+    } catch (error) {
+        res.status(400).json({ error: 'Failed to delete session' });
+    }
 });
 
 export default router;
