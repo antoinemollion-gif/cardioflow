@@ -1,70 +1,44 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'secret-key';
 
-router.post('/register', async (req, res) => {
+router.post('/register', async (req: Request, res: Response) => {
     try {
-        const { email, password, firstName, lastName, age, gender } = req.body;
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ error: 'User already exists' });
-        }
-
+        const { email, password, name } = req.body;
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ email, password: hashedPassword, firstName, lastName, age, gender });
+        const user = new User({ email, password: hashedPassword, name });
         await user.save();
-        res.status(201).json({ message: 'User registered successfully' });
+        res.status(201).json({ message: 'User registered successfully', userId: user._id });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(400).json({ error: 'Registration failed' });
     }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
         const user = await User.findOne({ email });
-        if (!user) {
+        if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '24h' });
-        res.json({ token, user: { id: user._id, email: user.email, firstName: user.firstName } });
+        const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ token, userId: user._id });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(400).json({ error: 'Login failed' });
     }
 });
 
-router.get('/profile/:userId', async (req, res) => {
+router.get('/profile/:userId', async (req: Request, res: Response) => {
     try {
         const user = await User.findById(req.params.userId).select('-password');
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+        if (!user) return res.status(404).json({ error: 'User not found' });
         res.json(user);
     } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-router.put('/profile/:userId', async (req, res) => {
-    try {
-        const { firstName, lastName, age, gender } = req.body;
-        const user = await User.findByIdAndUpdate(
-            req.params.userId,
-            { firstName, lastName, age, gender, updatedAt: new Date() },
-            { new: true }
-        ).select('-password');
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(400).json({ error: 'Failed to fetch profile' });
     }
 });
 
